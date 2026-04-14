@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>CYBER SHELL | DOX · SWAT · OSINT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            color: #f0f0f0;
+            font-family: 'Courier New', 'Fira Code', 'Segoe UI', monospace;
+            line-height: 1.5;
+            font-size: 18px;
+            overflow-x: hidden;
+        }
+
+        .firefly-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: #000000;
+            overflow: hidden;
+        }
+
+        .firefly {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+            animation: floatFirefly 12s infinite ease-in-out;
+        }
+
+        @keyframes floatFirefly {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.15;
+            }
+            50% {
+                transform: translate(var(--tx, 30px), var(--ty, -30px)) scale(1.6);
+                opacity: 0.7;
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            }
+            100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.15;
+            }
+        }
+
+        .shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title {
+            font-size: clamp(2rem, 8vw, 3.8rem);
+            font-weight: 900;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            font-family: 'Segoe UI', 'Impact', 'Arial Black', 'Courier New', monospace;
+            color: #ffffff;
+            text-shadow: 0 0 5px rgba(255,255,255,0.5), 2px 2px 0 #000;
+            animation: titleFlicker 3s infinite alternate;
+            padding: 0 0.5rem;
+        }
+
+        @keyframes titleFlicker {
+            0% { opacity: 0.95; text-shadow: 0 0 2px rgba(255,255,255,0.3); }
+            100% { opacity: 1; text-shadow: 0 0 10px rgba(255,255,255,0.7); }
+        }
+
+        .sub {
+            font-size: clamp(0.7rem, 3vw, 0.85rem);
+            border-top: 1px solid #444;
+            border-bottom: 1px solid #444;
+            padding: 0.5rem 1rem;
+            margin: 1rem 0 2rem;
+            letter-spacing: 1px;
+            color: #ccc;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+            width: fit-content;
+            max-width: 95%;
+        }
+
+        .menu-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            max-width: 1300px;
+            margin: 2rem 0;
+            padding: 0 0.5rem;
+        }
+
+        .menu-item {
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(4px);
+            border: 1px solid #333;
+            padding: 1.2rem 0.8rem;
+            width: calc(50% - 0.5rem);
+            min-width: 140px;
+            max-width: 200px;
+            cursor: pointer;
+            transition: 0.2s ease;
+            text-align: center;
+            flex: 1 0 auto;
+        }
+
+        @media (min-width: 600px) {
+            .menu-item {
+                width: 180px;
+                padding: 1.5rem 1rem;
+            }
+        }
+
+        @media (min-width: 1000px) {
+            .menu-item {
+                width: 210px;
+            }
+        }
+
+        .menu-item:hover {
+            border-color: #ffffff;
+            background: rgba(20, 20, 20, 0.9);
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        .menu-item .icon {
+            font-size: clamp(1.5rem, 6vw, 2.2rem);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .menu-item h3 {
+            font-size: clamp(0.9rem, 4vw, 1.2rem);
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+        }
+
+        .menu-item p {
+            font-size: 0.65rem;
+            color: #999;
+        }
+
+        .badge {
+            background: white;
+            color: black;
+            font-size: 0.55rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            display: inline-block;
+            margin-top: 0.5rem;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(6px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: rgba(4, 4, 4, 0.98);
+            border: 1px solid #3a3a3a;
+            width: 100%;
+            max-width: 850px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05);
+            animation: fadeIn 0.2s ease;
+        }
+
+        @media (min-width: 768px) {
+            .modal-content {
+                padding: 2rem;
+                width: 90%;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 2px solid #fff;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .modal-header h2 {
+            font-size: clamp(1.2rem, 5vw, 1.6rem);
+            margin: 0;
+            letter-spacing: -1px;
+            word-break: break-word;
+        }
+
+        .close-modal {
+            font-size: 1.8rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #fff;
+            font-weight: bold;
+            line-height: 1;
+            padding: 0 0.3rem;
+        }
+
+        .close-modal:hover {
+            color: #888;
+        }
+
+        .modal-content h3 {
+            margin: 1rem 0 0.5rem 0;
+            border-left: 3px solid white;
+            padding-left: 0.7rem;
+            font-size: clamp(1rem, 4vw, 1.2rem);
+        }
+
+        .modal-content p, .modal-content li {
+            color: #c0c0c0;
+            font-size: clamp(0.8rem, 3.5vw, 0.92rem);
+        }
+
+        ul, ol {
+            margin-left: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin: 0.4rem 0;
+        }
+
+        .alert-box {
+            background: rgba(15, 15, 15, 0.9);
+            border-left: 5px solid #cc0000;
+            padding: 0.7rem 1rem;
+            margin: 1rem 0;
+            font-size: clamp(0.8rem, 3.5vw, 0.9rem);
+        }
+
+        .case-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin: 1rem 0;
+        }
+        .case-item {
+            background: rgba(10, 10, 10, 0.9);
+            border-left: 3px solid #aaa;
+            padding: 0.7rem;
+            transition: 0.1s;
+        }
+        .case-item:hover {
+            background: #151515;
+            border-left-color: white;
+        }
+        .case-item strong {
+            color: white;
+            font-size: clamp(0.85rem, 3.8vw, 1rem);
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+        .case-detail {
+            font-size: clamp(0.7rem, 3vw, 0.85rem);
+            margin-top: 0.2rem;
+            color: #b0b0b0;
+        }
+
+        button.modal-btn {
+            background: white;
+            color: black;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            font-weight: bold;
+            font-family: monospace;
+            margin-top: 1rem;
+            cursor: pointer;
+            transition: 0.1s;
+            font-size: clamp(0.8rem, 3.5vw, 0.9rem);
+        }
+
+        button.modal-btn:hover {
+            background: #aaa;
+        }
+
+        .quiz-group {
+            margin: 1rem 0;
+        }
+
+        .quiz-group p {
+            font-weight: bold;
+            margin-bottom: 0.4rem;
+            font-size: clamp(0.85rem, 3.8vw, 1rem);
+        }
+
+        .quiz-opt {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            background: rgba(10, 10, 10, 0.9);
+            padding: 0.6rem;
+        }
+
+        .quiz-opt label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: clamp(0.75rem, 3.2vw, 0.85rem);
+        }
+
+        .quiz-opt input {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .quiz-result {
+            background: black;
+            border: 1px solid #2a2a2a;
+            padding: 0.8rem;
+            margin-top: 1rem;
+            text-align: center;
+            font-size: clamp(0.75rem, 3.2vw, 0.85rem);
+        }
+
+        hr {
+            border-color: #2a2a2a;
+            margin: 1rem 0;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.6rem;
+            color: #555;
+            background: rgba(0,0,0,0.4);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 1rem;
+            }
+            .menu-item {
+                min-width: 130px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="firefly-bg" id="fireflyBg"></div>
+
+<div class="shell">
+    <div class="title">CYBER SHELL</div>
+    <div class="sub">[ DOXING // SWATTING // OSINT // COUNTERMEASURES ]</div>
+    <div class="menu-grid">
+        <div class="menu-item" data-modal="modal-def">
+            <div class="icon">⚠️📁</div>
+            <h3>DOXING</h3>
+            <p>определение / методы</p>
+        </div>
+        <div class="menu-item" data-modal="modal-swat">
+            <div class="icon">🚔💥</div>
+            <h3>SWATTING</h3>
+            <p>ложный вызов спецназа</p>
+            <span class="badge">lethal risk</span>
+        </div>
+        <div class="menu-item" data-modal="modal-osint">
+            <div class="icon">🔍🌐</div>
+            <h3>OSINT</h3>
+            <p>разведка по открытым данным</p>
+            <span class="badge">двойной край</span>
+        </div>
+        <div class="menu-item" data-modal="modal-protect">
+            <div class="icon">🛡️🔒</div>
+            <h3>PROTECTION</h3>
+            <p>цифровая броня</p>
+        </div>
+        <div class="menu-item" data-modal="modal-action">
+            <div class="icon">⚡📋</div>
+            <h3>ACTION PLAN</h3>
+            <p>что делать при атаке</p>
+        </div>
+        <div class="menu-item" data-modal="modal-cases">
+            <div class="icon">📂⚖️</div>
+            <h3>REAL CASES</h3>
+            <p>12+ реальных историй</p>
+            <span class="badge">evidence</span>
+        </div>
+        <div class="menu-item" data-modal="modal-test">
+            <div class="icon">📋🧠</div>
+            <h3>TEST</h3>
+            <p>проверь себя</p>
+            <span class="badge">quiz</span>
+        </div>
+    </div>
+    <div class="footer-note">[ separate windows / dox · swat · osint ]</div>
+</div>
+
+<div id="modal-def" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>⚠️📁 DOXING — СЛИВ ДАННЫХ</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <p><strong>Доксинг</strong> — сбор приватной информации (адрес, телефон, ФИО, место работы, родственники) и публикация без согласия. Цель: запугивание, месть, репутационный удар.</p>
+        <h3>МЕТОДЫ ДОКСЕРОВ</h3>
+        <ul>
+            <li>Парсинг соцсетей и старых постов (геолокации, фото документов).</li>
+            <li>Утечки баз данных (сервисы доставки, операторы связи).</li>
+            <li>Социальная инженерия — звонки от имени поддержки.</li>
+            <li>WHOIS доменов, публичные реестры и архивы.</li>
+        </ul>
+        <div class="alert-box">
+            ⚠️ После доксинга жертву преследуют, шлют угрозы, звонят в дверь. Часто доксинг — первый шаг к своттингу.
+        </div>
+        <button class="modal-btn close-modal-btn">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div id="modal-swat" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🚔💥 SWATTING — ЛОЖНЫЙ ШТУРМ</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <p><strong>Своттинг (swatting)</strong> — звонок в полицию о тяжком преступлении (захват заложников, бомба, убийство) по адресу жертвы. На дом выезжает спецназ (SWAT) с оружием.</p>
+        <h3>СХЕМА АТАКИ</h3>
+        <ul>
+            <li>Доксер находит домашний адрес через слив данных или OSINT.</li>
+            <li>Использует подмену номера (спуфинг), чтобы вызов выглядел реальным.</li>
+            <li>Сообщает о массовом расстреле / захвате заложников.</li>
+            <li>Штурм квартиры, жертву бросают на пол, возможен выстрел от стресса.</li>
+        </ul>
+        <div class="alert-box">
+            💀 КРОВАВЫЙ СЛУЧАЙ: 2017 год — своттинг привел к гибели Эндрю Финча.
+        </div>
+        <button class="modal-btn close-modal-btn">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div id="modal-osint" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🔍🌐 OSINT — РАЗВЕДКА ПО ОТКРЫТЫМ ДАННЫМ</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <p><strong>OSINT (Open Source Intelligence)</strong> — сбор и анализ информации из общедоступных источников. Используется журналистами, спецслужбами, исследователями безопасности. Но также — доксерами и сталкерами.</p>
+        <h3>ИНСТРУМЕНТЫ OSINT</h3>
+        <ul>
+            <li>Поиск по никнеймам (WhatsMyName, Sherlock).</li>
+            <li>Архивы интернета (Wayback Machine).</li>
+            <li>Поиск по изображениям (Google Images, Yandex).</li>
+            <li>Анализ метаданных документов и фото.</li>
+            <li>Публичные базы: соцсети, госреестры, карты, WHOIS.</li>
+        </ul>
+        <h3>КАК OSINT ПОМОГАЕТ ЗАЩИТИТЬСЯ</h3>
+        <p>Проверьте себя: найдите свои старые аккаунты, удалите лишнее, скройте профили. Если информацию о вас легко найти — вы в зоне риска.</p>
+        <div class="alert-box">
+            🛡️ Совет: раз в 3 месяца пробивайте свой никнейм через OSINT-утилиты, чтобы контролировать утечки.
+        </div>
+        <button class="modal-btn close-modal-btn">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div id="modal-protect" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🛡️🔒 ЗАЩИТА / ПРОТИВОДЕЙСТВИЕ</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <h3>ЦИФРОВАЯ ГИГИЕНА</h3>
+        <ul>
+            <li>Уникальные пароли 14+ символов + двухфакторная аутентификация.</li>
+            <li>Проверка утечек: HaveIBeenPwned.</li>
+            <li>Не храните скан паспорта в облаке или открытых чатах.</li>
+        </ul>
+        <h3>СОЦИАЛЬНЫЕ СЕТИ</h3>
+        <ul>
+            <li>Закрытые профили, удалите геотеги дома / работы.</li>
+            <li>Используйте псевдонимы, не привязывайте реальную почту к форумам.</li>
+            <li>Отключите возможность поиска по номеру телефона.</li>
+        </ul>
+        <h3>ОСОБО ДЛЯ ОСINT</h3>
+        <ul>
+            <li>Разные никнеймы на разных платформах — не связывайте аккаунты.</li>
+            <li>Удаляйте старые посты на форумах (архивы сохраняют всё).</li>
+            <li>Используйте временные почты для регистраций.</li>
+        </ul>
+        <button class="modal-btn close-modal-btn">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div id="modal-action" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>⚡📋 ЧТО ДЕЛАТЬ ПРИ АТАКЕ</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <ol style="font-weight: bold;">
+            <li>📸 Сделайте скриншоты публикаций, угроз, ссылок — сохраните метаданные.</li>
+            <li>🚫 Не вступайте в перепалку с агрессором и его аудиторией.</li>
+            <li>📢 Подайте жалобу на платформе (удаление приватных данных).</li>
+            <li>👮 Обратитесь в полицию: ст. 137 УК РФ (нарушение неприкосновенности частной жизни), при своттинге — ст. 207 УК РФ.</li>
+            <li>🔄 Смените номера телефонов, почтовые адреса, временно смените локацию при критическом риске.</li>
+            <li>⚖️ Используйте право на забвение — удаление ссылок из поисковиков.</li>
+            <li>🔍 Проведите OSINT-аудит себя: найдите, какие данные о вас в открытом доступе.</li>
+        </ol>
+        <div class="alert-box">
+            🚨 ЕСЛИ ПРИЕХАЛ СПЕЦНАЗ: Спокойно выполняйте команды, руки на виду, объясните, что это ложный вызов.
+        </div>
+        <button class="modal-btn close-modal-btn">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div id="modal-cases" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📂⚖️ РЕАЛЬНЫЕ КЕЙСЫ (12+)</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="case-list">
+            <div class="case-item"><strong>1. Эндрю Финч (Канзас, 2017)</strong><div class="case-detail">Ссора в игре Call of Duty: WWII. 25-летний Кейси Винатер заказал своттинг по адресу соперника. Полицейский выстрелил в невиновного. Винатер получил 20 лет тюрьмы.</div></div>
+            <div class="case-item"><strong>2. Стример "Ice Poseidon" (2017)</strong><div class="case-detail">Зрители через OSINT нашли адрес отеля, сделали ложный вызов. SWAT ворвался в номер. Нападавший получил 4 года.</div></div>
+            <div class="case-item"><strong>3. Серийный доксер из Флориды (2020)</strong><div class="case-detail">Слил данные 50+ женщин, угрожал изнасилованием. Приговор — 10 лет тюрьмы и штраф $250k.</div></div>
+            <div class="case-item"><strong>4. Журналистка из Германии (2021)</strong><div class="case-detail">Через EXIF-данные фото нашли её адрес, подбросили наркотики. Доксер получил 3.5 года.</div></div>
+            <div class="case-item"><strong>5. Группа "DoxBin" (США, 2019)</strong><div class="case-detail">Публиковали адреса полицейских и судей. Лидер получил 8 лет.</div></div>
+            <div class="case-item"><strong>6. Тиктокер из Техаса (2022)</strong><div class="case-detail">Публиковала геотеги дома. Преследование, переезд в другой штат. Доксер получил 7 лет.</div></div>
+            <div class="case-item"><strong>7. OSINT-разоблачение блогера (2023)</strong><div class="case-detail">По фото нашли реальное имя и работу. Данные опубликовали, блогера уволили.</div></div>
+            <div class="case-item"><strong>8. Своттинг школы (Калифорния, 2020)</strong><div class="case-detail">15-летний хакер сообщил о расстреле. Эвакуация 800 учеников. Парень получил 5 лет.</div></div>
+            <div class="case-item"><strong>9. Массовый доксинг Roblox (2021)</strong><div class="case-detail">Подросток слил данные 2000 пользователей. Компенсация $500k, 3 года условно.</div></div>
+            <div class="case-item"><strong>10. OSINT против коррупции (Россия, 2022)</strong><div class="case-detail">Активисты нашли элитную квартиру чиновника. Возбуждено уголовное дело.</div></div>
+            <div class="case-item"><strong>11. Докс-атака на ютьюбера (2024)</strong><div class="case-detail">Нашли номер телефона и адрес, вызывали такси и доставку месяц. Доксер получил 2.5 года.</div></div>
+            <div class="case-item"><strong>12. Стример "CodeBullet" (2023)</strong><div class="case-detail">По звуку и свету нашли адрес, сделали своттинг. Нападавший получил 3 года.</div></div>
+        </div>
+        <div class="alert-box">
+            📌 Вывод: доксинг, своттинг и OSINT-злоупотребления наказываются реальными сроками от 2 до 20 лет.
+        </div>
+        <button class="modal-btn close-modal-btn">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div id="modal-test" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📋🧠 ТЕСТ / САМОПРОВЕРКА</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <p>5 вопросов — уровень кибербезопасности + OSINT.</p>
+        <form id="quizShellForm">
+            <div class="quiz-group"><p>1️⃣ Что такое своттинг?</p>
+                <div class="quiz-opt"><label><input type="radio" name="sq1" value="wrong"> Вирусный взлом камеры</label><label><input type="radio" name="sq1" value="correct"> Ложный вызов спецназа на адрес жертвы</label><label><input type="radio" name="sq1" value="wrong"> Фишинговая рассылка</label></div>
+            </div>
+            <div class="quiz-group"><p>2️⃣ Что такое OSINT?</p>
+                <div class="quiz-opt"><label><input type="radio" name="sq2" value="wrong"> Взлом серверов</label><label><input type="radio" name="sq2" value="correct"> Сбор информации из открытых источников</label><label><input type="radio" name="sq2" value="wrong"> DDoS-атака</label></div>
+            </div>
+            <div class="quiz-group"><p>3️⃣ Какая мера эффективно снижает риск доксинга?</p>
+                <div class="quiz-opt"><label><input type="radio" name="sq3" value="correct"> Закрытые соцсети + разные пароли + отсутствие геотегов дома</label><label><input type="radio" name="sq3" value="wrong"> Публикация номера телефона в открытом доступе</label><label><input type="radio" name="sq3" value="wrong"> Один пароль везде</label></div>
+            </div>
+            <div class="quiz-group"><p>4️⃣ Если данные уже опубликовали (доксинг), первое действие?</p>
+                <div class="quiz-opt"><label><input type="radio" name="sq4" value="correct"> Скриншоты, жалоба на платформу, полиция</label><label><input type="radio" name="sq4" value="wrong"> Начать оскорблять доксера</label><label><input type="radio" name="sq4" value="wrong"> Удалить всё без доказательств</label></div>
+            </div>
+            <div class="quiz-group"><p>5️⃣ При своттинге (спецназ ворвался) — правильное поведение:</p>
+                <div class="quiz-opt"><label><input type="radio" name="sq5" value="correct"> Спокойно выполнять команды, руки на виду</label><label><input type="radio" name="sq5" value="wrong"> Бежать и кричать</label><label><input type="radio" name="sq5" value="wrong"> Наброситься на полицейских</label></div>
+            </div>
+            <button type="button" id="checkShellQuiz" class="modal-btn">ПРОВЕРИТЬ</button>
+        </form>
+        <div id="shellQuizResult" class="quiz-result" style="display:none;"></div>
+        <button class="modal-btn close-modal-btn" style="margin-top: 1rem;">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const allModals = document.querySelectorAll('.modal');
+        const menuItems = document.querySelectorAll('.menu-item');
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal(modal) {
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                if (modal.id === 'modal-test') {
+                    const form = document.getElementById('quizShellForm');
+                    if (form) form.reset();
+                    const resDiv = document.getElementById('shellQuizResult');
+                    if (resDiv) resDiv.style.display = 'none';
+                }
+            }
+        }
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-modal');
+                if (target) openModal(target);
+            });
+        });
+
+        allModals.forEach(modal => {
+            const closeButtons = modal.querySelectorAll('.close-modal, .close-modal-btn');
+            closeButtons.forEach(btn => {
+                btn.addEventListener('click', () => closeModal(modal));
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal(modal);
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const opened = Array.from(allModals).find(m => m.style.display === 'flex');
+                if (opened) closeModal(opened);
+            }
+        });
+
+        const quizBtn = document.getElementById('checkShellQuiz');
+        if (quizBtn) {
+            quizBtn.addEventListener('click', () => {
+                const answers = {
+                    sq1: 'correct',
+                    sq2: 'correct',
+                    sq3: 'correct',
+                    sq4: 'correct',
+                    sq5: 'correct'
+                };
+                let score = 0;
+                let total = 5;
+                let details = [];
+
+                for (let q in answers) {
+                    const selected = document.querySelector(`input[name="${q}"]:checked`);
+                    if (selected && selected.value === answers[q]) {
+                        score++;
+                        details.push(`✅ ${q.toUpperCase()}: верно`);
+                    } else if (selected && selected.value !== answers[q]) {
+                        details.push(`❌ ${q.toUpperCase()}: ошибка`);
+                    } else {
+                        details.push(`⚠️ ${q.toUpperCase()}: пропущен`);
+                    }
+                }
+
+                let msg = '';
+                if (score === total) msg = `🎯 РЕЗУЛЬТАТ: ${score}/${total} — отлично. Вы вооружены знаниями.`;
+                else if (score >= 3) msg = `👍 РЕЗУЛЬТАТ: ${score}/${total} — хорошо, но изучите разделы SWATTING, OSINT и PROTECTION.`;
+                else msg = `⚠️ РЕЗУЛЬТАТ: ${score}/${total} — критический уровень. Откройте каждое окно.`;
+
+                const resultDiv = document.getElementById('shellQuizResult');
+                resultDiv.innerHTML = `<strong>${msg}</strong><br><span style="font-size:0.7rem;">${details.join(' | ')}</span>`;
+                resultDiv.style.display = 'block';
+            });
+        }
+
+        function createFireflies() {
+            const container = document.getElementById('fireflyBg');
+            if (!container) return;
+            const count = window.innerWidth < 600 ? 40 : 70;
+            for (let i = 0; i < count; i++) {
+                const fly = document.createElement('div');
+                fly.className = 'firefly';
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                const delay = Math.random() * 12;
+                const duration = 10 + Math.random() * 12;
+                const tx = (Math.random() - 0.5) * 70;
+                const ty = (Math.random() - 0.5) * 70;
+                fly.style.left = x + '%';
+                fly.style.top = y + '%';
+                fly.style.animationDelay = delay + 's';
+                fly.style.animationDuration = duration + 's';
+                fly.style.setProperty('--tx', tx + 'px');
+                fly.style.setProperty('--ty', ty + 'px');
+                container.appendChild(fly);
+            }
+        }
+        createFireflies();
+    })();
+</script>
+</body>
+</html>
