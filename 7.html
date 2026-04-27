@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Сказочная викторина</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #ffffff;
+    color: #222;
+    text-align: center;
+}
+
+.card { padding: 20px; }
+
+.timer {
+    font-size: 30px;
+    margin: 10px;
+}
+
+.answers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 80%;
+    margin: auto;
+}
+
+.answer {
+    padding: 20px;
+    font-size: 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: white;
+}
+
+.red { background: #e21b3c; }
+.blue { background: #1368ce; }
+.yellow { background: #d89e00; }
+.green { background: #26890c; }
+
+button {
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+input {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+}
+
+.confetti {
+    position: fixed;
+    top: 0;
+    animation: fall linear forwards;
+}
+
+@keyframes fall {
+    to {
+        transform: translateY(100vh);
+        opacity: 0;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<h1>🌟 Сказочная викторина</h1>
+
+<div id="start" class="card">
+    <p>Введите названия команд</p>
+    <input id="name1" placeholder="Команда 1">
+    <input id="name2" placeholder="Команда 2">
+    <input id="name3" placeholder="Команда 3"><br>
+    <button onclick="startGame()">Начать</button>
+</div>
+
+<div id="score"></div>
+<div id="teams" style="display:none;"></div>
+
+<div id="quiz" class="card" style="display:none;">
+    <div class="timer" id="timer">10</div>
+    <h2 id="question"></h2>
+    <div class="answers" id="answers"></div>
+</div>
+
+<script>
+
+let teamNames = ["1","2","3"];
+let scores = [0,0,0];
+let currentTeam = 0;
+let currentQuestion = 0;
+let time = 10;
+let timerInterval;
+
+const questions = [
+{q:"Что помогало Ивану-царевичу найти дорогу?",a:["Клубок","Фонарик","Компас","Карта"],correct:0},
+{q:"Кто тянул репку после Жучки?",a:["Кошка","Внучка","Мышка","Бабка"],correct:0},
+{q:"Что испекла бабка?",a:["Пирожок","Колобок","Блины","Каравай"],correct:1},
+{q:"Кого встретил Колобок первым?",a:["Волк","Медведь","Заяц","Лиса"],correct:2},
+{q:"Какую песню пел медведь?",a:["Весёлый","Сижу на пеньке","Не садись","Спи"],correct:1},
+{q:"Кто сломал теремок?",a:["Волк","Лиса","Медведь","Заяц"],correct:2},
+{q:"Как звали курочку?",a:["Ряба","Пеструшка","Хохлатка","Белянка"],correct:0},
+{q:"Кого украла Баба-яга?",a:["Иванушку","Машу","Алёнушку","Сестру"],correct:0},
+{q:"Что обещали купить?",a:["Конфеты","Платочек","Игрушку","Пряник"],correct:1},
+{q:"Кто выгнал лису?",a:["Петух","Волк","Собака","Медведь"],correct:0},
+{q:"Кого поймал Емеля?",a:["Рыбку","Щуку","Сома","Окуня"],correct:1},
+{q:"Какие слова говорил Емеля?",a:["По щучьему веленью","Сим-сим","Крекс","Лети"],correct:0},
+{q:"С кем сражался Иван?",a:["Змей","Кощей","Баба-яга","Леший"],correct:1},
+{q:"Кто первый помог деду?",a:["Внучка","Бабка","Жучка","Мышка"],correct:1},
+{q:"Из чего Буратино?",a:["Пластилин","Дерево","Тесто","Глина"],correct:1},
+
+{q:"Как звали девочку с голубыми волосами?",a:["Золушка","Мальвина","Белоснежка","Аврора"],correct:1},
+{q:"Что потеряла Золушка?",a:["Кольцо","Шляпу","Туфельку","Перчатку"],correct:2},
+{q:"Что было у Красной Шапочки?",a:["Грибы","Пирожки","Конфеты","Яблоки"],correct:1},
+{q:"Кто разбудил принцессу?",a:["Принц","Охотник","Король","Гном"],correct:0},
+{q:"Сколько гномов?",a:["3","5","7","10"],correct:2},
+{q:"Кто не хотел взрослеть?",a:["Гарри","Питер Пэн","Карлсон","Малыш"],correct:1},
+{q:"Кто живёт на крыше?",a:["Ворона","Кузя","Карлсон","Баба-яга"],correct:2},
+{q:"Кто из персика?",a:["Момотаро","Годзилла","Киби","Дзезира"],correct:0},
+{q:"Что нашёл Аладдин?",a:["Ковер","Сапоги","Лампу","Меч"],correct:2},
+{q:"Какие слова открывают пещеру?",a:["Ну погоди","Сезам","Абракадабра","Сим-сим"],correct:1},
+{q:"Что сделал мальчик-с-пальчик?",a:["Украл","Обманул","Выиграл","Нашёл"],correct:1},
+{q:"Как звали утёнка?",a:["Гадкий утёнок","Лебедь","Солдатик","Принцесса"],correct:0},
+{q:"Что потеряла русалочка?",a:["Волосы","Голос","Хвост","Красоту"],correct:1},
+{q:"Кого спасла Герда?",a:["Королеву","Кая","Разбойницу","Оленя"],correct:1},
+{q:"Лучший друг Винни-Пуха?",a:["Кролик","Иа","Пятачок","Сова"],correct:2}
+];
+
+function startGame(){
+    teamNames[0]=name1.value||"Команда 1";
+    teamNames[1]=name2.value||"Команда 2";
+    teamNames[2]=name3.value||"Команда 3";
+
+    start.style.display='none';
+    teams.style.display='block';
+    renderTeams();
+    updateScore();
+}
+
+function renderTeams(){
+    teams.innerHTML=`
+    <p>Выберите команду</p>
+    <button onclick="selectTeam(0)">${teamNames[0]}</button>
+    <button onclick="selectTeam(1)">${teamNames[1]}</button>
+    <button onclick="selectTeam(2)">${teamNames[2]}</button>
+    `;
+}
+
+function updateScore(){
+    score.innerHTML=`🏆 ${teamNames[0]}: ${scores[0]} |
+    ${teamNames[1]}: ${scores[1]} |
+    ${teamNames[2]}: ${scores[2]}`;
+}
+
+function selectTeam(team){
+    currentTeam=team;
+    teams.style.display='none';
+    quiz.style.display='block';
+    loadQuestion();
+}
+
+function loadQuestion(){
+    if(currentQuestion>=questions.length){
+        showWinner();
+        return;
+    }
+
+    let q=questions[currentQuestion];
+    question.innerText=q.q;
+
+    let colors=["red","blue","yellow","green"];
+    answers.innerHTML=q.a.map((ans,i)=>
+    `<div class="answer ${colors[i]}" onclick="answer(${i})">${ans}</div>`).join("");
+
+    startTimer();
+}
+
+function startTimer(){
+    time=10;
+    timer.innerText=time;
+
+    clearInterval(timerInterval);
+    timerInterval=setInterval(()=>{
+        time--;
+        timer.innerText=time;
+
+        if(time<=0){
+            clearInterval(timerInterval);
+            quiz.innerHTML=`<h2>⏱ Время вышло!</h2>`;
+            setTimeout(()=>{reset();},2000);
+        }
+    },1000);
+}
+
+function answer(i){
+    clearInterval(timerInterval);
+
+    let q=questions[currentQuestion];
+
+    if(i===q.correct){
+        scores[currentTeam]++;
+        createConfetti(200);
+        quiz.innerHTML=`<h2>✅ Правильно!</h2>`;
+        currentQuestion++;
+    } else {
+        quiz.innerHTML=`<h2>❌ Неправильно!</h2>`;
+    }
+
+    updateScore();
+    setTimeout(()=>{reset();},2000);
+}
+
+function reset(){
+    quiz.style.display='none';
+    teams.style.display='block';
+    quiz.innerHTML=`<div class="timer" id="timer">10</div>
+    <h2 id="question"></h2>
+    <div class="answers" id="answers"></div>`;
+}
+
+function createConfetti(n){
+    for(let i=0;i<n;i++){
+        let d=document.createElement("div");
+        d.className="confetti";
+        d.style.left=Math.random()*100+"vw";
+        d.style.width=d.style.height=(Math.random()*8+4)+"px";
+        d.style.background=["red","yellow","blue","green","black"][Math.floor(Math.random()*5)];
+        d.style.animationDuration=(Math.random()*3+2)+"s";
+        document.body.appendChild(d);
+        setTimeout(()=>d.remove(),4000);
+    }
+}
+
+function showWinner(){
+    let max = Math.max(...scores);
+    let winners = scores.filter(s => s === max).length;
+
+    if(winners > 1){
+        document.body.innerHTML=`<h1>🤝 Победила дружба!</h1>`;
+    } else {
+        let winner=teamNames[scores.indexOf(max)];
+        document.body.innerHTML=`<h1>🏆 Победитель: ${winner}</h1>`;
+    }
+
+    createConfetti(300);
+}
+
+</script>
+
+</body>
+</html>
